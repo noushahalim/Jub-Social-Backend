@@ -30,9 +30,6 @@ const signupSchema = mongoose.Schema({
     about:{
         type:String
     },
-    profileKey:{
-        type:String
-    },
     createdAt:{
         type:Date,
         default:Date.now

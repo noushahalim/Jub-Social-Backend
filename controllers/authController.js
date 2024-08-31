@@ -1,10 +1,13 @@
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
+const bcrypt = require("bcrypt")
+const jwt = require('jsonwebtoken')
+const otpGenerator = require('otp-generator')
 const signupModel = require("../models/signupModel")
 const signupValidation = require("../utilities/signupValidation")
 const nodemailer = require('../utilities/otpController')
-const otpGenerator = require('otp-generator')
-const bcrypt = require("bcrypt")
 const emailContent = require("../utilities/emailContent");
-const jwt = require('jsonwebtoken')
 
 const generateOtp = ()=>{
     return otpGenerator.generate(4, { 
@@ -308,27 +311,45 @@ exports.login = async(req,res)=>{
     try{
         const {email,password}= req.body
         const client = await signupModel.findOne({email})
+
         if(!client){
             return res.status(400).json('check your email')
         }
+
+        const passwordCheck = await bcrypt.compare(password,client.password)
+        if(!passwordCheck){
+            return res.status(400).json('wrong password')
+        }
+
+        if(client.status=='pending'){
+            return res.status(400).json('email not verified')
+        }
+
+        const id = {id:client._id}
+        const jwtToken= jwt.sign(id,process.env.JWT_TOKEN_SECRET)
+
+        if(!client.profile){
+            const fullName = client.fullName
+            const nameParts = fullName.trim().split(' ')
+            let apiUrl = `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(fullName)}&rounded=true`
+
+            if (nameParts.length === 1) {
+                apiUrl += '&length=1'
+            }
+
+            const response = await axios.get(apiUrl, { responseType: 'arraybuffer' })
+            const imageName = `${client._id}.png`
+            const imagePath = path.join(__dirname, '../public/images/profile/', imageName)
+
+            fs.writeFileSync(imagePath, response.data)
+
+            client.profile = `/images/profile/${imageName}`
+            await client.save()
+
+            res.status(200).json({token:jwtToken,profileImage:client.profile,fullName:client.fullName})
+        }
         else{
-            const passwordCheck = await bcrypt.compare(password,client.password)
-            if(!passwordCheck){
-                return res.status(400).json('wrong password')
-            }
-            else if(client.status=='pending'){
-                return res.status(400).json('email not verified')
-            }
-            else{
-                const id = {id:client._id}
-                const jwtToken= jwt.sign(id,process.env.JWT_TOKEN_SECRET)
-                if(client.profile){
-                    res.status(200).json({token:jwtToken,profileImage:client.profile,fullName:client.fullName})    
-                }
-                else{
-                    res.status(200).json({token:jwtToken,fullName:client.fullName})
-                }
-            }
+            res.status(200).json({token:jwtToken,profileImage:client.profile,fullName:client.fullName})
         }
     }
     catch(err){
