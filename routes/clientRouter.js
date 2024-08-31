@@ -10,5 +10,6 @@ clientRouter.post('/forgotPassword',authController.forgotPassword)
 clientRouter.post('/forgotOtpVerification',authController.forgotOtpVerification)
 clientRouter.post('/forgotResendOtp',authController.forgotResendOtp)
 clientRouter.post('/changePassword',authController.changePassword)
+clientRouter.post('/login',authController.login)
 
 module.exports = clientRouter

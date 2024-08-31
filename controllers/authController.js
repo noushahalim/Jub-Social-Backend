@@ -4,6 +4,7 @@ const nodemailer = require('../utilities/otpController')
 const otpGenerator = require('otp-generator')
 const bcrypt = require("bcrypt")
 const emailContent = require("../utilities/emailContent");
+const jwt = require('jsonwebtoken')
 
 const generateOtp = ()=>{
     return otpGenerator.generate(4, { 
@@ -299,6 +300,39 @@ exports.changePassword = async (req,res)=>{
     }
     catch(err){
         console.log('error on changePassword',err);
+        res.status(500).json('Internal server error');
+    }
+}
+
+exports.login = async(req,res)=>{
+    try{
+        const {email,password}= req.body
+        const client = await signupModel.findOne({email})
+        if(!client){
+            return res.status(400).json('check your email')
+        }
+        else{
+            const passwordCheck = await bcrypt.compare(password,client.password)
+            if(!passwordCheck){
+                return res.status(400).json('wrong password')
+            }
+            else if(client.status=='pending'){
+                return res.status(400).json('email not verified')
+            }
+            else{
+                const id = {id:client._id}
+                const jwtToken= jwt.sign(id,process.env.JWT_TOKEN_SECRET)
+                if(client.profile){
+                    res.status(200).json({token:jwtToken,profileImage:client.profile,fullName:client.fullName})    
+                }
+                else{
+                    res.status(200).json({token:jwtToken,fullName:client.fullName})
+                }
+            }
+        }
+    }
+    catch(err){
+        console.log('error on login',err);
         res.status(500).json('Internal server error');
     }
 }
