@@ -268,3 +268,37 @@ exports.forgotResendOtp = async(req,res)=>{
         res.status(500).json('Internal server error');
     }
 }
+
+exports.changePassword = async (req,res)=>{
+    try{
+        const {password,id}=req.body
+        const client = await signupModel.findOne({_id:id})
+        if(!client){
+            return res.status(400).json('user details not getting')
+        }
+        else if(!signupValidation.pwdValidation(password)){
+            return res.status(400).json('Invalid password format')
+        }
+        else{
+
+            // Generate a random salt
+            const saltRounds = 10;
+            const salt = await bcrypt.genSalt(saltRounds)
+    
+            // Hash the password with the generated salt
+            const hasedPassword = await bcrypt.hash(password, salt)
+
+            await signupModel.findOneAndUpdate(
+                {_id:id},
+                {
+                    password:hasedPassword
+                }
+            )
+            res.status(200).json('password updated')
+        }
+    }
+    catch(err){
+        console.log('error on changePassword',err);
+        res.status(500).json('Internal server error');
+    }
+}
