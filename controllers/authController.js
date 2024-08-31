@@ -204,3 +204,31 @@ exports.forgotPassword = async(req,res)=>{
         res.status(500).json('Internal server error');
     }
 }
+
+exports.forgotOtpVerification = async(req,res)=>{
+    try{
+        const {otp,id}=req.body
+        const client = await signupModel.findOne({_id:id})
+        if(!client){
+            return res.status(400).json('user details not getting')
+        }
+        else{
+            if(client.otp!==otp){
+                return res.status(400).json('Invalid otp')
+            }
+            else{
+                await signupModel.findOneAndUpdate(
+                    {_id:id},
+                    {
+                        otp:''
+                    }
+                )
+                res.status(200).json('verified')
+            }
+        }
+    }
+    catch(err){
+        console.log('error on forgotOtpVerification',err);
+        res.status(500).json('Internal server error');
+    }
+}
